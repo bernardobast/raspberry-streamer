@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VJ Controller</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: monospace; background: #111; color: #eee;
+           height: 100dvh; display: flex; flex-direction: column; }
+
+    /* Tab nav */
+    nav { display: flex; border-bottom: 1px solid #333; flex-shrink: 0; }
+    nav button { flex: 1; padding: 12px 4px; background: none; border: none;
+                 color: #666; font: inherit; font-size: 13px; cursor: pointer; }
+    nav button.active { color: #fff; border-bottom: 2px solid #fff; }
+
+    /* Panels */
+    .panel { flex: 1; overflow-y: auto; padding: 12px; display: none; }
+    .panel.active { display: block; }
+    .empty { color: #444; text-align: center; margin-top: 48px; font-size: 13px; }
+
+    /* Clips */
+    .clip-grid { display: grid;
+                 grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+    .clip-card { background: #1c1c1c; border: 1px solid #2a2a2a; border-radius: 6px;
+                 padding: 6px; cursor: pointer; color: inherit; font: inherit;
+                 text-align: left; width: 100%; }
+    .clip-card:active, .clip-card.active { border-color: #fff; background: #2a2a2a; }
+    .clip-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover;
+                     border-radius: 3px; display: block; background: #000; }
+    .clip-name { display: block; margin-top: 4px; font-size: 11px;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .clip-mode { display: block; font-size: 10px; color: #555; }
+
+    /* Shared form elements */
+    .action-btn { display: block; width: 100%; padding: 10px; margin: 8px 0;
+                  background: #1c1c1c; border: 1px solid #333; border-radius: 6px;
+                  color: #eee; font: inherit; cursor: pointer; }
+    .action-btn.primary { border-color: #888; }
+
+    /* Loops */
+    .loop-row { display: flex; justify-content: space-between; align-items: flex-start;
+                padding: 10px; background: #1a1a1a; border-radius: 6px; margin: 6px 0; }
+    .loop-info strong { display: block; font-size: 13px; }
+    .loop-steps { font-size: 10px; color: #555; margin-top: 2px; }
+    .loop-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .loop-actions button { background: none; border: 1px solid #333; border-radius: 4px;
+                           color: #aaa; padding: 4px 8px; cursor: pointer; font: inherit; }
+    .step-row { display: flex; gap: 8px; align-items: center;
+                padding: 6px 0; border-bottom: 1px solid #1e1e1e; font-size: 13px; }
+    .step-row button { background: none; border: 1px solid #333; border-radius: 4px;
+                       color: #aaa; padding: 2px 6px; cursor: pointer; font: inherit; font-size: 11px; }
+    .loop-name-input, .clip-select {
+      width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #333;
+      border-radius: 6px; color: #eee; font: inherit; margin-bottom: 8px; }
+
+    /* Now Playing */
+    .np-status { text-align: center; padding: 28px 12px 16px; }
+    .np-label { font-size: 10px; color: #444; letter-spacing: 2px; margin-bottom: 6px; }
+    .np-name { font-size: 24px; font-weight: bold; min-height: 30px; }
+    .np-type { font-size: 11px; color: #666; margin-top: 4px; min-height: 16px; }
+    .transition-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .t-btn { padding: 10px; background: #1a1a1a; border: 1px solid #2a2a2a;
+             border-radius: 6px; color: #777; font: inherit; cursor: pointer; }
+    .t-btn.active { border-color: #aaa; color: #eee; background: #222; }
+    #duration-slider { width: 100%; margin: 8px 0; accent-color: #fff; }
+    #duration-val { text-align: center; font-size: 12px; color: #555; }
+  </style>
+</head>
+<body>
+  <nav>
+    <button class="tab active" data-panel="clips">Clips</button>
+    <button class="tab" data-panel="loops">Loops</button>
+    <button class="tab" data-panel="now-playing">Now Playing</button>
+  </nav>
+  <div id="clips"       class="panel active"></div>
+  <div id="loops"       class="panel"></div>
+  <div id="now-playing" class="panel"></div>
+
+  <script type="module">
+    import { renderClipsPanel }     from '/static/controller/clips.js';
+    import { renderLoopsPanel }     from '/static/controller/loops.js';
+    import { renderNowPlayingPanel } from '/static/controller/now-playing.js';
+
+    const renderers = {
+      clips:        renderClipsPanel,
+      loops:        renderLoopsPanel,
+      'now-playing': renderNowPlayingPanel,
+    };
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        const name = tab.dataset.panel;
+        const panel = document.getElementById(name);
+        panel.classList.add('active');
+        renderers[name](panel);
+      });
+    });
+
+    renderClipsPanel(document.getElementById('clips'));
+  </script>
+</body>
+</html>
