@@ -159,12 +159,20 @@ export class Renderer {
   }
 
   _drawFilmGrain(ctx, w, h) {
+    const imageData = ctx.createImageData(w, h);
+    const data = imageData.data;
     const count = Math.floor(w * h * 0.004);
     for (let i = 0; i < count; i++) {
+      const x = Math.random() * w | 0;
+      const y = Math.random() * h | 0;
+      const idx = (y * w + x) * 4;
       const b = Math.random() > 0.5 ? 255 : 0;
-      ctx.fillStyle = `rgba(${b},${b},${b},0.25)`;
-      ctx.fillRect(Math.random() * w | 0, Math.random() * h | 0, 1, 1);
+      data[idx]     = b;
+      data[idx + 1] = b;
+      data[idx + 2] = b;
+      data[idx + 3] = 64;
     }
+    ctx.putImageData(imageData, 0, 0);
   }
 
   _drawDatabend(ctx, w, h) {
