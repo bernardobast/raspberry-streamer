@@ -2,6 +2,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 from server.models import PlayerState
 from server.deps import get_store
 
+_VALID_ALWAYS_ON = {'none', 'scanlines', 'vhs-tracking', 'film-grain', 'databend'}
+
 class ConnectionManager:
     def __init__(self):
         self.active: list[WebSocket] = []
@@ -103,6 +105,12 @@ class ConnectionManager:
         elif t == "set_transition":
             self.state.transition = data.get("transition", self.state.transition)
             self.state.transition_duration = data.get("duration", self.state.transition_duration)
+
+        elif t == "set_always_on":
+            effect = data.get("effect", "none")
+            if effect in _VALID_ALWAYS_ON:
+                self.state.always_on_effect = effect
+                await self.broadcast({"type": "set_always_on", "effect": effect})
 
 manager = ConnectionManager()
 

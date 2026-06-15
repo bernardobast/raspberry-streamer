@@ -1,7 +1,25 @@
 import { connectWS, sendCommand, fetchClips, fetchLoops }
   from '/static/controller/api.js';
 
-const TRANSITIONS = ['dissolve', 'vhs', 'film-burn', 'glitch'];
+const ALWAYS_ON   = ['none', 'scanlines', 'vhs-tracking', 'film-grain', 'databend'];
+const TRANSITIONS = ['none', 'white-static', 'channel-switch', 'vhs-rewind'];
+
+function makeGrid(items, activeItem, cssClass, onClick) {
+  const grid = document.createElement('div');
+  grid.className = cssClass;
+  items.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 't-btn' + (name === activeItem ? ' active' : '');
+    btn.textContent = name;
+    btn.addEventListener('click', () => {
+      grid.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      onClick(name);
+    });
+    grid.appendChild(btn);
+  });
+  return grid;
+}
 
 export async function renderNowPlayingPanel(container) {
   const [clips, loops] = await Promise.all([fetchClips(), fetchLoops()]);
@@ -16,30 +34,35 @@ export async function renderNowPlayingPanel(container) {
     </div>
     <button id="np-stop" class="action-btn primary">■ Stop</button>
     <div style="margin-top:20px">
+      <div class="np-label">ALWAYS-ON EFFECT</div>
+      <div id="fx-grid"></div>
+    </div>
+    <div style="margin-top:16px">
       <div class="np-label">TRANSITION</div>
-      <div class="transition-grid" id="t-grid"></div>
+      <div id="t-grid"></div>
       <div class="np-label" style="margin-top:16px">DURATION</div>
       <input type="range" id="duration-slider" min="0.5" max="2" step="0.1" value="1.0" />
       <div id="duration-val">1.0s</div>
     </div>
   `;
 
-  let activeTransition = 'dissolve';
+  let activeEffect     = 'none';
+  let activeTransition = 'none';
   let activeDuration   = 1.0;
 
-  const grid = container.querySelector('#t-grid');
-  TRANSITIONS.forEach(name => {
-    const btn = document.createElement('button');
-    btn.className = 't-btn' + (name === activeTransition ? ' active' : '');
-    btn.textContent = name;
-    btn.addEventListener('click', () => {
+  container.querySelector('#fx-grid').appendChild(
+    makeGrid(ALWAYS_ON, activeEffect, 'effect-grid', name => {
+      activeEffect = name;
+      sendCommand({ type: 'set_always_on', effect: name });
+    })
+  );
+
+  container.querySelector('#t-grid').appendChild(
+    makeGrid(TRANSITIONS, activeTransition, 'transition-grid', name => {
       activeTransition = name;
-      grid.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       sendCommand({ type: 'set_transition', transition: name, duration: activeDuration });
-    });
-    grid.appendChild(btn);
-  });
+    })
+  );
 
   const slider   = container.querySelector('#duration-slider');
   const durLabel = container.querySelector('#duration-val');

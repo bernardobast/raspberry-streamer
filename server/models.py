@@ -34,3 +34,4 @@ class PlayerState(BaseModel):
     is_playing: bool = False
     transition: str = "dissolve"
     transition_duration: float = 1.0
+    always_on_effect: str = "none"

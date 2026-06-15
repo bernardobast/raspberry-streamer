@@ -5,13 +5,22 @@
   <title>raspberry-streamer</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
-    canvas { display: block; width: 100%; height: 100%; position: relative; z-index: 1; }
+    body { background: #000; overflow: hidden; width: 100vw; height: 100vh; position: relative; }
+    #gl-canvas {
+      display: block; width: 100%; height: 100%;
+      position: absolute; top: 0; left: 0; z-index: 1;
+    }
+    #fx-overlay {
+      display: block; width: 100%; height: 100%;
+      position: absolute; top: 0; left: 0; z-index: 2;
+      pointer-events: none;
+    }
     video { display: none; }
   </style>
 </head>
 <body>
   <canvas id="gl-canvas"></canvas>
+  <canvas id="fx-overlay"></canvas>
   <video id="video-a" crossorigin="anonymous" playsinline></video>
   <video id="video-b" crossorigin="anonymous" playsinline></video>
   <div id="err" style="display:none;position:fixed;top:0;left:0;right:0;background:red;color:#fff;font:16px monospace;padding:8px;z-index:999;white-space:pre-wrap;"></div>
