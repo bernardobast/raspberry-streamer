@@ -9,64 +9,80 @@ const ICONS = {
   x:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
 };
 
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export async function renderLoopsPanel(container) {
-  const [loops, clips] = await Promise.all([fetchLoops(), fetchClips()]);
-  const byId = Object.fromEntries(clips.map(c => [c.id, c]));
-  container.innerHTML = '';
+  try {
+    const [loops, clips] = await Promise.all([fetchLoops(), fetchClips()]);
+    const byId = Object.fromEntries(clips.map(c => [c.id, c]));
+    container.innerHTML = '';
 
-  const newBtn = document.createElement('button');
-  newBtn.className = 'action-btn';
-  newBtn.textContent = '+ New Loop';
-  newBtn.addEventListener('click', () => showEditor(container, null, clips, byId));
-  container.appendChild(newBtn);
+    const newBtn = document.createElement('button');
+    newBtn.className = 'action-btn';
+    newBtn.textContent = '+ New Loop';
+    newBtn.addEventListener('click', () => showEditor(container, null, clips, byId));
+    container.appendChild(newBtn);
 
-  if (loops.length === 0) {
-    const p = document.createElement('p');
-    p.className = 'empty';
-    p.textContent = 'No loops yet.';
-    container.appendChild(p);
-    return;
-  }
+    if (loops.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'No loops yet.';
+      container.appendChild(p);
+      return;
+    }
 
-  loops.forEach(loop => {
-    const filmstripHTML = loop.steps.length
-      ? loop.steps.map(s => {
-          const clip = byId[s.clip_id];
-          if (!clip) return '';
-          const thumb = clip.filename.replace(/\.[^.]+$/, '.jpg');
-          return `<div class="filmstrip-thumb">
-            <img src="/thumbnails/${thumb}" alt="${clip.name}" onerror="this.style.display='none'" />
-            <span>${clip.name}</span>
-          </div>`;
-        }).join('')
-      : '<span style="color:var(--text-dim);font-size:12px;padding:8px 0">empty</span>';
+    loops.forEach(loop => {
+      const filmstripHTML = loop.steps.length
+        ? loop.steps.map(s => {
+            const clip = byId[s.clip_id];
+            if (!clip) return '';
+            const thumb = clip.filename.replace(/\.[^.]+$/, '.jpg');
+            return `<div class="filmstrip-thumb">
+              <img src="/thumbnails/${thumb}" alt="${esc(clip.name)}" onerror="this.style.display='none'" />
+              <span>${esc(clip.name)}</span>
+            </div>`;
+          }).join('')
+        : '<span style="color:var(--text-dim);font-size:12px;padding:8px 0">empty</span>';
 
-    const row = document.createElement('div');
-    row.className = 'loop-row';
-    row.innerHTML = `
-      <div class="loop-header">
-        <div class="loop-info">
-          <strong>${loop.name}</strong>
+      const row = document.createElement('div');
+      row.className = 'loop-row';
+      row.innerHTML = `
+        <div class="loop-header">
+          <div class="loop-info">
+            <strong>${esc(loop.name)}</strong>
+          </div>
+          <div class="loop-actions">
+            <button class="icon-btn accent play-btn" title="Play">${ICONS.play}</button>
+            <button class="icon-btn edit-btn" title="Edit">${ICONS.edit}</button>
+            <button class="icon-btn del-btn" title="Delete">${ICONS.trash}</button>
+          </div>
         </div>
-        <div class="loop-actions">
-          <button class="icon-btn accent play-btn" title="Play">${ICONS.play}</button>
-          <button class="icon-btn edit-btn" title="Edit">${ICONS.edit}</button>
-          <button class="icon-btn del-btn" title="Delete">${ICONS.trash}</button>
-        </div>
-      </div>
-      <div class="filmstrip">${filmstripHTML}</div>
-    `;
+        <div class="filmstrip">${filmstripHTML}</div>
+      `;
 
-    row.querySelector('.play-btn').addEventListener('click', () =>
-      sendCommand({ type: 'play_loop', loop_id: loop.id }));
-    row.querySelector('.edit-btn').addEventListener('click', () =>
-      showEditor(container, loop, clips, byId));
-    row.querySelector('.del-btn').addEventListener('click', async () => {
-      await deleteLoop(loop.id);
-      renderLoopsPanel(container);
+      row.querySelector('.play-btn').addEventListener('click', () =>
+        sendCommand({ type: 'play_loop', loop_id: loop.id }));
+      row.querySelector('.edit-btn').addEventListener('click', () =>
+        showEditor(container, loop, clips, byId));
+      row.querySelector('.del-btn').addEventListener('click', async () => {
+        try {
+          await deleteLoop(loop.id);
+          renderLoopsPanel(container);
+        } catch {
+          // silently ignore — loop list will re-render on next tab visit
+        }
+      });
+      container.appendChild(row);
     });
-    container.appendChild(row);
-  });
+  } catch (err) {
+    container.innerHTML = `<p class="empty">Failed to load loops.</p>`;
+  }
 }
 
 function showEditor(container, loop, clips, byId) {
@@ -88,7 +104,7 @@ function showEditor(container, loop, clips, byId) {
       const row = document.createElement('div');
       row.className = 'step-row';
       row.innerHTML = `
-        <span style="flex:1">${byId[step.clip_id]?.name || '?'}</span>
+        <span style="flex:1">${esc(byId[step.clip_id]?.name || '?')}</span>
         ${i > 0 ? `<button class="icon-btn up-btn" title="Move up">${ICONS.up}</button>` : ''}
         <button class="icon-btn rm-btn" title="Remove">${ICONS.x}</button>
       `;
@@ -129,9 +145,13 @@ function showEditor(container, loop, clips, byId) {
   saveBtn.textContent = 'Save';
   saveBtn.addEventListener('click', async () => {
     const payload = { name: nameInput.value || 'Untitled', steps };
-    if (loop) { payload.id = loop.id; await updateLoop(loop.id, payload); }
-    else await createLoop(payload);
-    renderLoopsPanel(container);
+    try {
+      if (loop) { payload.id = loop.id; await updateLoop(loop.id, payload); }
+      else await createLoop(payload);
+      renderLoopsPanel(container);
+    } catch {
+      // silently ignore
+    }
   });
   container.appendChild(saveBtn);
 
