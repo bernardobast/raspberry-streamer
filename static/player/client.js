@@ -25,7 +25,7 @@ function connect() {
       videoB.pause(); videoB.src = '';
     } else if (msg.type === 'set_always_on') {
       renderer.setAlwaysOnEffect(msg.effect);
-    } else if (msg.type === 'state' && msg.always_on_effect) {
+    } else if (msg.type === 'state' && 'always_on_effect' in msg) {
       renderer.setAlwaysOnEffect(msg.always_on_effect);
     }
   };
