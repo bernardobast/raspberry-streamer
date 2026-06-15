@@ -1,0 +1,13 @@
+[Unit]
+Description=raspberry-streamer VJ player
+After=network.target graphical-session.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/raspberry-streamer
+ExecStart=/home/pi/raspberry-streamer/scripts/start.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

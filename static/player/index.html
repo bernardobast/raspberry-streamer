@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>raspberry-streamer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+    canvas { display: block; width: 100%; height: 100%; position: relative; z-index: 1; }
+    video { display: none; }
+  </style>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <video id="video-a" crossorigin="anonymous" playsinline></video>
+  <video id="video-b" crossorigin="anonymous" playsinline></video>
+  <div id="err" style="display:none;position:fixed;top:0;left:0;right:0;background:red;color:#fff;font:16px monospace;padding:8px;z-index:999;white-space:pre-wrap;"></div>
+  <div id="dbg" style="position:fixed;top:40px;left:0;right:0;background:rgba(0,0,0,.85);color:yellow;font:20px monospace;padding:10px;z-index:9999;pointer-events:none;transform:translateZ(0);will-change:transform;">loading...</div>
+  <script>
+    window.onerror = (msg, src, line) => {
+      const el = document.getElementById('err');
+      el.style.display = 'block';
+      el.textContent += `[${line}] ${msg}\n`;
+    };
+  </script>
+  <script type="module" src="/static/player/renderer.js"></script>
+  <script type="module" src="/static/player/client.js"></script>
+</body>
+</html>
