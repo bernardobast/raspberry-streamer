@@ -45,15 +45,18 @@ function makeTex(gl) {
 }
 
 export class Renderer {
-  constructor(canvas, videoA, videoB) {
-    this.canvas = canvas;
-    this.videos = [videoA, videoB];
-    this.activeIdx = 0;
-    this.progress = 0.0;
-    this.gl = canvas.getContext('webgl');
-    this.programs = {};
-    this.textures = [makeTex(this.gl), makeTex(this.gl)];
-    this._activeShader = 'dissolve';
+  constructor(canvas, videoA, videoB, overlayCanvas) {
+    this.canvas   = canvas;
+    this.videos   = [videoA, videoB];
+    this.activeIdx  = 0;
+    this.progress   = 0.0;
+    this.gl         = canvas.getContext('webgl');
+    this.programs   = {};
+    this.textures   = [makeTex(this.gl), makeTex(this.gl)];
+    this._activeShader    = 'dissolve';
+    this._alwaysOnEffect  = 'none';
+    this._overlay = overlayCanvas || null;
+    this._fxCtx   = overlayCanvas ? overlayCanvas.getContext('2d') : null;
     this._setupGeometry();
   }
 
@@ -67,11 +70,20 @@ export class Renderer {
   }
 
   async loadAllShaders() {
-    const names = ['dissolve', 'vhs', 'film-burn', 'glitch'];
+    const names = ['dissolve', 'vhs', 'film-burn', 'glitch',
+                   'white-static', 'channel-switch', 'vhs-rewind'];
     await Promise.all(names.map(async name => {
       const res = await fetch(`/static/player/shaders/${name}.glsl`);
       this.programs[name] = link(this.gl, await res.text());
     }));
+  }
+
+  setAlwaysOnEffect(name) {
+    this._alwaysOnEffect = name;
+    if (this._fxCtx && name === 'none') {
+      this._fxCtx.clearRect(0, 0,
+        this._overlay.width, this._overlay.height);
+    }
   }
 
   _syncCanvasSize() {
@@ -112,6 +124,64 @@ export class Renderer {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
+  _fxFrame() {
+    if (!this._fxCtx || this._alwaysOnEffect === 'none') return;
+    const ctx = this._fxCtx;
+    const w = this._overlay.clientWidth;
+    const h = this._overlay.clientHeight;
+    if (this._overlay.width !== w)  this._overlay.width  = w;
+    if (this._overlay.height !== h) this._overlay.height = h;
+    ctx.clearRect(0, 0, w, h);
+    switch (this._alwaysOnEffect) {
+      case 'scanlines':    this._drawScanlines(ctx, w, h);    break;
+      case 'vhs-tracking': this._drawVhsTracking(ctx, w, h);  break;
+      case 'film-grain':   this._drawFilmGrain(ctx, w, h);    break;
+      case 'databend':     this._drawDatabend(ctx, w, h);     break;
+    }
+  }
+
+  _drawScanlines(ctx, w, h) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    for (let y = 0; y < h; y += 4) ctx.fillRect(0, y, w, 2);
+  }
+
+  _drawVhsTracking(ctx, w, h) {
+    if (Math.random() < 0.06) {
+      const y = Math.random() * h;
+      ctx.fillStyle = `rgba(255,255,255,${(Math.random() * 0.08 + 0.02).toFixed(3)})`;
+      ctx.fillRect(0, y, w, Math.random() * 12 + 2);
+    }
+    if (Math.random() < 0.03) {
+      const y = h * 0.8 + Math.random() * h * 0.2;
+      ctx.fillStyle = 'rgba(0,100,255,0.06)';
+      ctx.fillRect(0, y, w, 8);
+    }
+  }
+
+  _drawFilmGrain(ctx, w, h) {
+    const count = Math.floor(w * h * 0.004);
+    for (let i = 0; i < count; i++) {
+      const b = Math.random() > 0.5 ? 255 : 0;
+      ctx.fillStyle = `rgba(${b},${b},${b},0.25)`;
+      ctx.fillRect(Math.random() * w | 0, Math.random() * h | 0, 1, 1);
+    }
+  }
+
+  _drawDatabend(ctx, w, h) {
+    const shift = 3 + (Math.random() * 2 | 0);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = 'rgba(255,0,0,0.04)';
+    ctx.fillRect(shift, 0, w, h);
+    ctx.fillStyle = 'rgba(0,0,255,0.04)';
+    ctx.fillRect(-shift, 0, w, h);
+    ctx.globalCompositeOperation = 'source-over';
+    if (Math.random() < 0.08) {
+      const y = Math.random() * h | 0;
+      ctx.fillStyle = `rgba(255,255,255,${(Math.random() * 0.06).toFixed(3)})`;
+      ctx.fillRect(0, y, w, Math.random() * 3 + 1);
+    }
+  }
+
   startLoop() {
     const errEl = document.getElementById('err');
     const dbgEl = document.getElementById('dbg');
@@ -119,11 +189,12 @@ export class Renderer {
     const tick = () => {
       try {
         this._frame();
+        this._fxFrame();
         frames++;
         if (dbgEl) {
           const va = this.videos[0], vb = this.videos[1];
           dbgEl.textContent =
-            `frames:${frames} activeIdx:${this.activeIdx} progress:${this.progress.toFixed(2)} | ` +
+            `frames:${frames} activeIdx:${this.activeIdx} progress:${this.progress.toFixed(2)} fx:${this._alwaysOnEffect} | ` +
             `A rs=${va.readyState} paused=${va.paused} src=${va.src ? '✓' : '✗'} | ` +
             `B rs=${vb.readyState} paused=${vb.paused} src=${vb.src ? '✓' : '✗'}`;
         }
@@ -141,6 +212,11 @@ export class Renderer {
   }
 
   async transition(shaderName, durationSecs) {
+    if (shaderName === 'none') {
+      this.activeIdx = 1 - this.activeIdx;
+      this.progress  = 0.0;
+      return;
+    }
     this._activeShader = shaderName;
     const start = performance.now();
     await new Promise(resolve => {
@@ -152,6 +228,6 @@ export class Renderer {
       requestAnimationFrame(tick);
     });
     this.activeIdx = 1 - this.activeIdx;
-    this.progress = 0.0;
+    this.progress  = 0.0;
   }
 }
