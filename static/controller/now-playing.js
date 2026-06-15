@@ -14,11 +14,11 @@ export async function renderNowPlayingPanel(container) {
       <div id="np-name" class="np-name">—</div>
       <div id="np-type" class="np-type"></div>
     </div>
-    <button id="np-stop" class="action-btn">■ Stop</button>
-    <div style="margin-top:16px">
+    <button id="np-stop" class="action-btn primary">■ Stop</button>
+    <div style="margin-top:20px">
       <div class="np-label">TRANSITION</div>
       <div class="transition-grid" id="t-grid"></div>
-      <div class="np-label" style="margin-top:14px">DURATION</div>
+      <div class="np-label" style="margin-top:16px">DURATION</div>
       <input type="range" id="duration-slider" min="0.5" max="2" step="0.1" value="1.0" />
       <div id="duration-val">1.0s</div>
     </div>
