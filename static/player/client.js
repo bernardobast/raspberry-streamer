@@ -1,10 +1,11 @@
 import { Renderer } from '/static/player/renderer.js';
 
-const canvas  = document.getElementById('gl-canvas');
-const videoA  = document.getElementById('video-a');
-const videoB  = document.getElementById('video-b');
+const canvas   = document.getElementById('gl-canvas');
+const overlay  = document.getElementById('fx-overlay');
+const videoA   = document.getElementById('video-a');
+const videoB   = document.getElementById('video-b');
 
-const renderer = new Renderer(canvas, videoA, videoB);
+const renderer = new Renderer(canvas, videoA, videoB, overlay);
 
 async function init() {
   await renderer.loadAllShaders();
@@ -22,6 +23,10 @@ function connect() {
     } else if (msg.type === 'stop') {
       videoA.pause(); videoA.src = '';
       videoB.pause(); videoB.src = '';
+    } else if (msg.type === 'set_always_on') {
+      renderer.setAlwaysOnEffect(msg.effect);
+    } else if (msg.type === 'state' && msg.always_on_effect) {
+      renderer.setAlwaysOnEffect(msg.always_on_effect);
     }
   };
 
